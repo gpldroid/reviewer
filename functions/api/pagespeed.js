@@ -1,10 +1,10 @@
 const ALLOWED_STRATEGIES = new Set(['mobile', 'desktop']);
 const ALLOWED_CATEGORIES = ['performance', 'seo', 'accessibility', 'best-practices'];
-const ALLOWED_ORIGINS = new Set(['https://gpldroid.github.io']);
+const GITHUB_PAGES_ORIGIN = 'https://gpldroid.github.io';
 
 export async function onRequest({ request, env }) {
   const origin = request.headers.get('Origin') || '';
-  const corsOrigin = ALLOWED_ORIGINS.has(origin) ? origin : '';
+  const corsOrigin = isAllowedOrigin(origin) ? origin : '';
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders(corsOrigin) });
@@ -27,7 +27,7 @@ export async function onRequest({ request, env }) {
   }
 
   const hostname = parsed.hostname.toLowerCase();
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '::1' || hostname.endsWith('.local') || hostname.endsWith('.internal') || /^10\./.test(hostname) || /^192\.168\./.test(hostname) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)) {
+  if (isPrivateHostname(hostname)) {
     return json({ error: 'Private or local URLs are not allowed' }, 400, corsOrigin);
   }
 
@@ -57,10 +57,39 @@ export async function onRequest({ request, env }) {
       return json({ error: message, status: upstream.status, source: 'google-pagespeed' }, upstream.status, corsOrigin);
     }
 
-    return json(payload, 200, corsOrigin, { 'cache-control': 'public, max-age=60, s-maxage=180, stale-while-revalidate=60' });
+    return json(payload, 200, corsOrigin, {
+      'cache-control': 'public, max-age=60, s-maxage=180, stale-while-revalidate=60'
+    });
   } catch (error) {
-    return json({ error: error?.name === 'TimeoutError' ? 'The PageSpeed analysis timed out. Try again or use a faster public URL.' : 'Unable to reach Google PageSpeed Insights. Please try again.' }, 502, corsOrigin);
+    return json({
+      error: error?.name === 'TimeoutError'
+        ? 'The PageSpeed analysis timed out. Try again or use a faster public URL.'
+        : 'Unable to reach Google PageSpeed Insights. Please try again.'
+    }, 502, corsOrigin);
   }
+}
+
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (origin === GITHUB_PAGES_ORIGIN) return true;
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'https:' && url.hostname.endsWith('.pages.dev');
+  } catch {
+    return false;
+  }
+}
+
+function isPrivateHostname(hostname) {
+  return hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname === '0.0.0.0'
+    || hostname === '::1'
+    || hostname.endsWith('.local')
+    || hostname.endsWith('.internal')
+    || /^10\./.test(hostname)
+    || /^192\.168\./.test(hostname)
+    || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
 }
 
 function corsHeaders(origin) {
