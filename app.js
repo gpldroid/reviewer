@@ -12,8 +12,27 @@ function renderLighthouse(url, data, strategy = 'mobile') {
   $('#status').textContent = 'Complete'; $('#empty').hidden = true; $('#report').hidden = false;
   $('#report').innerHTML = `<div class="score-grid">${scores.map(([name, value]) => `<div class="score-card"><strong>${value ?? '—'}</strong><span>${name}</span></div>`).join('')}</div><p><b>${url}</b> · ${strategy === 'desktop' ? 'Desktop' : 'Mobile'}</p><div class="metric pass"><strong>Performance metrics</strong><span>FCP: ${audit(result,'first-contentful-paint')} · LCP: ${audit(result,'largest-contentful-paint')} · TBT: ${audit(result,'total-blocking-time')} · CLS: ${audit(result,'cumulative-layout-shift')} · Speed Index: ${audit(result,'speed-index')}</span></div><div class="metric pass"><strong>SEO checks</strong><span>Meta description: ${audit(result,'meta-description')} · Crawlable: ${audit(result,'is-crawlable')} · Canonical: ${audit(result,'canonical')} · Link text: ${audit(result,'link-text')}</span></div><div class="metric pass"><strong>Accessibility</strong><span>Image alt: ${audit(result,'image-alt')} · Language: ${audit(result,'html-has-lang')} · ARIA: ${audit(result,'aria-allowed-attr')} · Contrast: ${audit(result,'color-contrast')}</span></div><div class="metric pass"><strong>Best practices</strong><span>HTTPS: ${audit(result,'is-on-https')} · Doctype: ${audit(result,'doctype')} · Responsive images: ${audit(result,'image-size-responsive')} · Console errors: ${audit(result,'errors-in-console')}</span></div>`;
 }
-async function analyze(url, strategy = 'mobile') { const params = new URLSearchParams({ url, strategy }); const response = await fetch(`${API_ENDPOINT}?${params}`, { headers: { Accept: 'application/json' }, cache: 'no-store' }); let data = null; try { data = await response.json(); } catch {} if (!response.ok) throw new Error(data?.error || 'PageSpeed analysis failed'); return data; }
-$('#analyze')?.addEventListener('click', async () => { const url = normalize($('#url').value); if (!url) { $('#notice').textContent = 'Please enter a valid URL.'; return; } $('#status').textContent = 'Analyzing'; $('#notice').textContent = 'Analyzing with Google PageSpeed Insights…'; try { const data = await analyze(url, 'mobile'); renderLighthouse(url, data, 'mobile'); $('#notice').textContent = 'Analysis completed successfully.'; } catch (error) { $('#status').textContent = 'Error'; $('#empty').hidden = true; $('#report').hidden = false; $('#report').innerHTML = `<div class="metric warn"><strong>Analysis unavailable</strong><span>${error.message}</span></div>`; $('#notice').textContent = 'Make sure the PageSpeed API key is configured in the hosting environment.'; } });
+
+async function analyze(url, strategy = 'mobile') {
+  const params = new URLSearchParams({ url, strategy });
+  let response;
+  try {
+    response = await fetch(`${API_ENDPOINT}?${params}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+  } catch {
+    throw new Error('The PageSpeed API cannot be reached. Deploy the project on Cloudflare Pages and configure PAGESPEED_API_KEY, or set REVIEWER_API_ENDPOINT to your secure API URL.');
+  }
+  let data = null;
+  try { data = await response.json(); } catch {}
+  if (!response.ok) {
+    if (response.status === 429) throw new Error('PageSpeed quota/rate limit reached. Please wait and try again.');
+    if (response.status === 401 || response.status === 403) throw new Error(data?.error || 'PageSpeed API key is invalid, restricted, or not authorized.');
+    if (response.status === 503) throw new Error(data?.error || 'PageSpeed API is not configured on the server.');
+    throw new Error(data?.error || `PageSpeed analysis failed (${response.status}).`);
+  }
+  return data;
+}
+
+$('#analyze')?.addEventListener('click', async () => { const url = normalize($('#url').value); if (!url) { $('#notice').textContent = 'Please enter a valid URL.'; return; } $('#status').textContent = 'Analyzing'; $('#notice').textContent = 'Analyzing with Google PageSpeed Insights…'; try { const data = await analyze(url, 'mobile'); renderLighthouse(url, data, 'mobile'); $('#notice').textContent = 'Analysis completed successfully.'; } catch (error) { $('#status').textContent = 'Error'; $('#empty').hidden = true; $('#report').hidden = false; $('#report').innerHTML = `<div class="metric warn"><strong>Analysis unavailable</strong><span>${error.message}</span></div>`; $('#notice').textContent = 'Check the API deployment and PAGESPEED_API_KEY configuration.'; } });
 $('#compareBtn')?.addEventListener('click', async () => { const a = normalize($('#url1').value), b = normalize($('#url2').value); if (!a || !b) { $('#compareResult').innerHTML = '<div class="metric warn">Enter two valid URLs.</div>'; return; } $('#compareResult').innerHTML = '<div class="metric">Comparing both websites…</div>'; try { const [left, right] = await Promise.all([analyze(a, 'mobile'), analyze(b, 'mobile')]); const l = left.lighthouseResult || left, r = right.lighthouseResult || right; $('#compareResult').innerHTML = `<div class="metric pass"><strong>PageSpeed comparison</strong><span>${a} — Performance ${score(l,'performance') ?? '—'}, SEO ${score(l,'seo') ?? '—'} · ${b} — Performance ${score(r,'performance') ?? '—'}, SEO ${score(r,'seo') ?? '—'}</span></div>`; } catch (error) { $('#compareResult').innerHTML = `<div class="metric warn"><strong>Comparison unavailable</strong><span>${error.message}</span></div>`; } });
 
 // Lightweight SaaS navigation: vanilla JS only, with keyboard and mobile support.
@@ -27,15 +46,12 @@ dropdowns.forEach(dropdown => { const button = dropdown.querySelector('.dropdown
 document.addEventListener('click', event => { if (!event.target.closest('.nav')) closeMenu(); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });
 mainNav?.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
-
 const currentPath = location.pathname.replace(/\/$/, '') || '/';
 mainNav?.querySelectorAll('a[data-page]').forEach(link => { const href = link.getAttribute('href'); const targetPath = href === './' || href === '/' ? '/' : new URL(href, location.href).pathname.replace(/\/$/, ''); if (targetPath === currentPath || (link.dataset.page === 'analyze' && location.hash === '#analyzer')) { link.classList.add('active'); link.setAttribute('aria-current','page'); link.closest('.nav-dropdown')?.classList.add('has-active'); } });
-
 const themeButton = $('#theme');
 const THEME_KEY = 'reviewer_theme';
 if (localStorage.getItem(THEME_KEY) === 'dark') document.body.classList.add('dark');
 themeButton?.addEventListener('click', () => { const dark = document.body.classList.toggle('dark'); localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); });
-
 const COOKIE_KEY = 'reviewer_cookie_consent'; const cookieBanner = $('#cookieBanner');
 if (cookieBanner && !localStorage.getItem(COOKIE_KEY)) cookieBanner.hidden = false;
 $('#cookieAccept')?.addEventListener('click', () => { localStorage.setItem(COOKIE_KEY, 'accepted'); cookieBanner.hidden = true; });
