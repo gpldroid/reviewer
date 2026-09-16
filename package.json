@@ -1,0 +1,13 @@
+{
+  "name": "reviewer-seo-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Reviewer SEO and PageSpeed Tools",
+  "scripts": {
+    "build": "node -e \"console.log('Cloudflare Pages: static site, no build step required')\"",
+    "deploy": "wrangler pages deploy . --project-name reviewer-seo-tools"
+  },
+  "devDependencies": {
+    "wrangler": "^4.133.0"
+  }
+}
