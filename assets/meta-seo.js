@@ -1,141 +1,63 @@
-/* Reviewer Meta SEO Analyzer
- * Extracts the target page's <head> metadata when the target permits browser CORS,
- * then evaluates the signals against practical Google Search SEO guidance.
- */
+/* Reviewer Meta SEO + On-page Analyzer */
 (() => {
-  const $ = s => document.querySelector(s);
-  const escapeHtml = value => String(value ?? '—').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const normalize = value => {
-    value = String(value || '').trim();
-    if (!value) return null;
-    if (!/^https?:\/\//i.test(value)) value = 'https://' + value;
-    try { return new URL(value).href; } catch { return null; }
-  };
-  const text = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const getMeta = (doc, selector) => doc.querySelector(selector)?.getAttribute('content') || '';
-  const getLink = (doc, selector) => doc.querySelector(selector)?.getAttribute('href') || '';
-  const all = (doc, selector) => [...doc.querySelectorAll(selector)];
+  const $=s=>document.querySelector(s), esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm=v=>{v=String(v||'').trim();if(!v)return null;if(!/^https?:\/\//i.test(v))v='https://'+v;try{return new URL(v).href}catch{return null}};
+  const clean=v=>String(v||'').replace(/\s+/g,' ').trim(), chars=v=>[...String(v||'')].length;
+  const meta=(d,s)=>d.querySelector(s)?.getAttribute('content')||'', link=(d,s)=>d.querySelector(s)?.getAttribute('href')||'', all=(d,s)=>[...d.querySelectorAll(s)];
 
-  function collect(doc, url) {
-    const metas = all(doc, 'meta').map(el => ({
-      name: el.getAttribute('name') || '',
-      property: el.getAttribute('property') || '',
-      httpEquiv: el.getAttribute('http-equiv') || '',
-      charset: el.getAttribute('charset') || '',
-      content: el.getAttribute('content') || ''
-    }));
-    const links = all(doc, 'link').map(el => ({
-      rel: el.getAttribute('rel') || '', href: el.getAttribute('href') || '', hreflang: el.getAttribute('hreflang') || '', type: el.getAttribute('type') || ''
-    }));
-    const title = text(doc.querySelector('title')?.textContent);
-    const description = getMeta(doc, 'meta[name="description"]');
-    const robots = getMeta(doc, 'meta[name="robots"]');
-    const canonical = getLink(doc, 'link[rel="canonical"]');
-    const viewport = getMeta(doc, 'meta[name="viewport"]');
-    const lang = doc.documentElement?.getAttribute('lang') || '';
-    const charset = doc.querySelector('meta[charset]')?.getAttribute('charset') || getMeta(doc, 'meta[http-equiv="Content-Type"]');
-    const author = getMeta(doc, 'meta[name="author"]');
-    const keywords = getMeta(doc, 'meta[name="keywords"]');
-    const themeColor = getMeta(doc, 'meta[name="theme-color"]');
-    const og = {
-      title: getMeta(doc, 'meta[property="og:title"]'), description: getMeta(doc, 'meta[property="og:description"]'),
-      type: getMeta(doc, 'meta[property="og:type"]'), url: getMeta(doc, 'meta[property="og:url"]'), image: getMeta(doc, 'meta[property="og:image"]'),
-      siteName: getMeta(doc, 'meta[property="og:site_name"]'), locale: getMeta(doc, 'meta[property="og:locale"]')
-    };
-    const twitter = {
-      card: getMeta(doc, 'meta[name="twitter:card"]'), title: getMeta(doc, 'meta[name="twitter:title"]'), description: getMeta(doc, 'meta[name="twitter:description"]'),
-      image: getMeta(doc, 'meta[name="twitter:image"]'), site: getMeta(doc, 'meta[name="twitter:site"]')
-    };
-    const hreflang = links.filter(x => x.rel.toLowerCase().split(/\s+/).includes('alternate') && x.hreflang);
-    const jsonLd = all(doc, 'script[type="application/ld+json"]').map(el => text(el.textContent)).filter(Boolean);
-    const icons = links.filter(x => /(^|\s)(icon|shortcut icon|apple-touch-icon)(\s|$)/i.test(x.rel));
-    return { url, title, description, robots, canonical, viewport, lang, charset, author, keywords, themeColor, og, twitter, hreflang, jsonLd, icons, metas, links };
+  function collect(doc,url){
+    const base=new URL(url), metas=all(doc,'meta').map(e=>({name:e.getAttribute('name')||'',property:e.getAttribute('property')||'',httpEquiv:e.getAttribute('http-equiv')||'',charset:e.getAttribute('charset')||'',content:e.getAttribute('content')||''}));
+    const links=all(doc,'link').map(e=>({rel:e.getAttribute('rel')||'',href:e.getAttribute('href')||'',hreflang:e.getAttribute('hreflang')||'',type:e.getAttribute('type')||''}));
+    const anchors=all(doc,'a[href]').map(e=>({href:e.href||e.getAttribute('href')||'',text:clean(e.textContent),rel:e.getAttribute('rel')||''}));
+    const headings=all(doc,'h1,h2,h3,h4,h5,h6').map((e,i)=>({level:+e.tagName.slice(1),text:clean(e.textContent),index:i+1}));
+    const title=clean(doc.querySelector('title')?.textContent),description=meta(doc,'meta[name="description"]'),keywords=meta(doc,'meta[name="keywords"]'),robots=meta(doc,'meta[name="robots"]'),canonical=link(doc,'link[rel="canonical"]'),viewport=meta(doc,'meta[name="viewport"]'),lang=doc.documentElement?.getAttribute('lang')||'',charset=doc.querySelector('meta[charset]')?.getAttribute('charset')||meta(doc,'meta[http-equiv="Content-Type"]');
+    const og={title:meta(doc,'meta[property="og:title"]'),description:meta(doc,'meta[property="og:description"]'),image:meta(doc,'meta[property="og:image"]'),url:meta(doc,'meta[property="og:url"]'),type:meta(doc,'meta[property="og:type"]'),siteName:meta(doc,'meta[property="og:site_name"]'),locale:meta(doc,'meta[property="og:locale"]')};
+    const twitter={card:meta(doc,'meta[name="twitter:card"]'),title:meta(doc,'meta[name="twitter:title"]'),description:meta(doc,'meta[name="twitter:description"]'),image:meta(doc,'meta[name="twitter:image"]'),site:meta(doc,'meta[name="twitter:site"]')};
+    const hreflang=links.filter(x=>x.rel.toLowerCase().split(/\s+/).includes('alternate')&&x.hreflang),jsonLd=all(doc,'script[type="application/ld+json"]').map(e=>clean(e.textContent)).filter(Boolean),icons=links.filter(x=>/(^|\s)(icon|shortcut icon|apple-touch-icon)(\s|$)/i.test(x.rel));
+    const internal=[],external=[]; anchors.forEach(a=>{try{const u=new URL(a.href,base);if(!/^https?:$/.test(u.protocol))return;(u.origin===base.origin?internal:external).push({...a,href:u.href})}catch{}});
+    const socials=anchors.filter(a=>{try{return /facebook\.com|instagram\.com|x\.com|twitter\.com|linkedin\.com|youtube\.com|youtu\.be|tiktok\.com|pinterest\.com|telegram\.me|telegram\.org|wa\.me|whatsapp\.com|github\.com|reddit\.com|threads\.net/i.test(new URL(a.href,base).hostname)}catch{return false}});
+    return {url,title,description,keywords,robots,canonical,viewport,lang,charset,og,twitter,hreflang,jsonLd,icons,metas,links,anchors,headings,internal,external,socials};
   }
 
-  function status(ok, label) { return `<span class="meta-status ${ok ? 'good' : 'bad'}">${ok ? 'Pass' : 'Fix'}</span><span>${escapeHtml(label)}</span>`; }
-  function rule(item, title, why, fix) {
-    return `<article class="meta-rule ${item.ok ? 'good' : 'bad'}"><div class="meta-rule-head">${status(item.ok, title)}</div><p><strong>Current:</strong> ${escapeHtml(item.current || 'Missing')}</p><p><strong>Why:</strong> ${escapeHtml(why)}</p>${!item.ok ? `<p><strong>How to fix:</strong> ${escapeHtml(fix)}</p>` : ''}</article>`;
-  }
-  function evaluate(m) {
-    const titleLen = [...m.title].length;
-    const descLen = [...m.description].length;
-    const canonicalUrl = m.canonical ? new URL(m.canonical, m.url).href : '';
-    const target = new URL(m.url);
-    const canonicalSameOrigin = canonicalUrl && new URL(canonicalUrl).origin === target.origin;
-    const robotsNoindex = /(^|[,\s])noindex([,\s]|$)/i.test(m.robots);
-    const checks = [
-      { key:'title', ok: titleLen >= 30 && titleLen <= 60, current: m.title ? `${titleLen} characters — ${m.title}` : '', title:'Title', why:'The title is a primary search-result signal and should be concise, descriptive and unique.', fix:'Write a unique, descriptive title. As a practical target, keep it around 30–60 characters and put the main topic near the beginning.' },
-      { key:'description', ok: descLen >= 70 && descLen <= 160, current: m.description ? `${descLen} characters — ${m.description}` : '', title:'Meta description', why:'A useful description can help searchers understand the page and can influence the search snippet.', fix:'Add a unique, useful description of roughly 70–160 characters that accurately summarizes the page; avoid keyword stuffing.' },
-      { key:'canonical', ok: !!m.canonical && canonicalSameOrigin, current:m.canonical, title:'Canonical URL', why:'A clear canonical helps consolidate duplicate URL signals. Google treats canonicalization as a hint, not an absolute command.', fix:'Add one absolute rel="canonical" URL that points to the preferred version of this page. Keep protocol/host/path consistent and avoid conflicting canonicals.' },
-      { key:'robots', ok: !robotsNoindex, current:m.robots, title:'Robots meta', why:'A noindex directive prevents the page from being indexed when Google respects it.', fix:'If this page should appear in search, remove noindex and use index,follow or omit the robots meta unless a specific directive is needed.' },
-      { key:'viewport', ok:/width\s*=\s*device-width/i.test(m.viewport), current:m.viewport, title:'Viewport', why:'A mobile viewport supports responsive rendering and mobile usability.', fix:'Use <meta name="viewport" content="width=device-width, initial-scale=1">.' },
-      { key:'language', ok:!!m.lang, current:m.lang, title:'HTML language', why:'The lang attribute helps user agents and accessibility technologies identify the document language.', fix:'Set the correct language on the root element, for example <html lang="en"> or <html lang="ar" dir="rtl">.' },
-      { key:'charset', ok:/utf-?8/i.test(m.charset), current:m.charset, title:'Character encoding', why:'UTF-8 prevents many text-encoding problems and is the normal web standard.', fix:'Declare UTF-8 near the beginning of <head> with <meta charset="utf-8">.' },
-      { key:'ogTitle', ok:!!m.og.title, current:m.og.title, title:'Open Graph title', why:'og:title provides a clear title when the page is shared on compatible platforms.', fix:'Add <meta property="og:title" content="..."> using a concise version of the page title.' },
-      { key:'ogDescription', ok:!!m.og.description, current:m.og.description, title:'Open Graph description', why:'og:description controls the description used by many social previews.', fix:'Add <meta property="og:description" content="..."> with a concise, accurate summary.' },
-      { key:'ogImage', ok:!!m.og.image, current:m.og.image, title:'Open Graph image', why:'An explicit social image improves link-preview consistency.', fix:'Add an absolute og:image URL to a representative image and make sure it is publicly reachable.' },
-      { key:'twitterCard', ok:!!m.twitter.card, current:m.twitter.card, title:'Twitter/X card', why:'A twitter:card declaration gives supported clients an explicit preview format.', fix:'Add <meta name="twitter:card" content="summary_large_image"> when a large preview image is available.' },
-      { key:'jsonLd', ok:m.jsonLd.length > 0, current:m.jsonLd.length ? `${m.jsonLd.length} JSON-LD block(s)` : '', title:'Structured data', why:'Structured data can help Google understand page entities and may enable eligible rich-result features when the markup and page meet requirements.', fix:'Add valid JSON-LD that accurately describes the visible page content. Choose a Schema.org type supported by Google when a rich result is relevant.' },
-      { key:'favicon', ok:m.icons.length > 0, current:m.icons[0]?.href || '', title:'Favicon', why:'A favicon helps identify the site in browser and search interfaces where supported.', fix:'Add a valid rel="icon" link to a crawlable 1:1 favicon image.' },
-      { key:'hreflang', ok:m.hreflang.length === 0 || m.hreflang.every(x => x.href), current:m.hreflang.map(x => `${x.hreflang}: ${x.href}`).join(' | '), title:'hreflang', why:'hreflang is useful for genuine localized or regional versions of substantially equivalent pages.', fix:'If localized versions exist, add reciprocal alternate links with valid language/region codes and matching URLs. If there are no variants, hreflang is not required.' }
+  function evaluate(m){
+    const tl=chars(m.title),dl=chars(m.description),kl=chars(m.keywords),h1=m.headings.filter(h=>h.level===1).length,noindex=/(^|[,\s])noindex([,\s]|$)/i.test(m.robots);let can='';try{can=m.canonical?new URL(m.canonical,m.url).href:''}catch{}
+    const origin=new URL(m.url).origin;
+    const checks=[
+      {ok:tl>=30&&tl<=60,title:'Title length',current:`${tl} characters`,fix:'Keep the title concise, unique and descriptive; a practical target is about 30–60 characters.'},
+      {ok:dl>=70&&dl<=160,title:'Meta description length',current:`${dl} characters`,fix:'Write a unique, accurate description; a practical target is about 70–160 characters and avoid keyword stuffing.'},
+      {ok:!!m.canonical&&can&&new URL(can).origin===origin,title:'Canonical URL',current:m.canonical||'Missing',fix:'Add one absolute rel="canonical" URL for the preferred page version.'},
+      {ok:!noindex,title:'Robots meta',current:m.robots||'Not set',fix:'If this page should appear in Search, remove noindex.'},
+      {ok:/width\s*=\s*device-width/i.test(m.viewport),title:'Viewport',current:m.viewport||'Missing',fix:'Use width=device-width, initial-scale=1.'},
+      {ok:!!m.lang,title:'HTML language',current:m.lang||'Missing',fix:'Set the correct lang attribute on <html>.'},
+      {ok:/utf-?8/i.test(m.charset),title:'UTF-8 charset',current:m.charset||'Missing',fix:'Add <meta charset="utf-8"> near the beginning of <head>.'},
+      {ok:h1===1,title:'H1 structure',current:`${h1} H1`,fix:'Use one clear primary H1 and use H2–H6 for secondary sections.'},
+      {ok:!!m.og.title&&!!m.og.description&&!!m.og.image,title:'Open Graph',current:`title ${m.og.title?'✓':'✗'} · description ${m.og.description?'✓':'✗'} · image ${m.og.image?'✓':'✗'}`,fix:'Add og:title, og:description and an absolute og:image URL.'},
+      {ok:!!m.twitter.card,title:'X/Twitter card',current:m.twitter.card||'Missing',fix:'Add twitter:card, usually summary_large_image when a suitable image exists.'},
+      {ok:m.jsonLd.length>0,title:'Structured data',current:`${m.jsonLd.length} JSON-LD block(s)`,fix:'Add accurate JSON-LD only when it describes visible content and a relevant supported type applies.'}
     ];
-    const passed = checks.filter(x => x.ok).length;
-    return { checks, passed, total:checks.length, score:Math.round(passed / checks.length * 100) };
+    return {checks,score:Math.round(checks.filter(x=>x.ok).length/checks.length*100),tl,dl,kl};
   }
 
-  function renderMeta(m, evaluation, sourceLabel) {
-    const rows = [
-      ['Title', m.title], ['Meta description', m.description], ['Robots', m.robots], ['Canonical', m.canonical], ['Viewport', m.viewport],
-      ['Language', m.lang], ['Charset', m.charset], ['Author', m.author], ['Keywords', m.keywords], ['Theme color', m.themeColor],
-      ['OG title', m.og.title], ['OG description', m.og.description], ['OG type', m.og.type], ['OG URL', m.og.url], ['OG image', m.og.image], ['OG site name', m.og.siteName],
-      ['Twitter card', m.twitter.card], ['Twitter title', m.twitter.title], ['Twitter description', m.twitter.description], ['Twitter image', m.twitter.image], ['Twitter site', m.twitter.site]
-    ];
-    const table = rows.map(([name,value]) => `<tr><th>${escapeHtml(name)}</th><td>${value ? escapeHtml(value) : '<span class="meta-missing">Missing</span>'}</td></tr>`).join('');
-    const linkRows = m.links.filter(x => x.rel || x.href).map(x => `<tr><th>${escapeHtml(x.rel || 'link')}</th><td>${escapeHtml(x.hreflang ? `${x.hreflang} — ` : '')}${escapeHtml(x.href || '—')}</td></tr>`).join('');
-    const rawMetaRows = m.metas.map(x => `<tr><th>${escapeHtml(x.name || x.property || x.httpEquiv || (x.charset ? 'charset' : 'meta'))}</th><td>${escapeHtml(x.content || x.charset || '—')}</td></tr>`).join('');
-    return `<div id="metaSeoReport" class="meta-seo-section report-section"><div class="section-title"><div><h3>Complete Meta SEO Analysis</h3><span>${escapeHtml(sourceLabel)}</span></div><strong class="meta-score ${evaluation.score >= 90 ? 'good' : evaluation.score >= 70 ? 'warn' : 'bad'}">${evaluation.score}/100</strong></div><div class="meta-overview"><div><strong>${evaluation.passed}/${evaluation.total}</strong><span>SEO meta checks passed</span></div><div><strong>${m.metas.length}</strong><span>meta tags found</span></div><div><strong>${m.links.length}</strong><span>link elements found</span></div><div><strong>${m.jsonLd.length}</strong><span>JSON-LD blocks</span></div></div><div class="meta-table-wrap"><h4>Extracted page metadata</h4><table class="meta-table"><tbody>${table}</tbody></table></div><div class="meta-table-wrap"><h4>All link elements</h4><table class="meta-table"><tbody>${linkRows || '<tr><td>No link elements found.</td></tr>'}</tbody></table></div><div class="meta-table-wrap"><h4>All meta tags</h4><table class="meta-table"><tbody>${rawMetaRows || '<tr><td>No meta tags found.</td></tr>'}</tbody></table></div><div class="meta-rules"><h4>SEO compliance &amp; fixes</h4>${evaluation.checks.map(x => rule(x, x.title, x.why, x.fix)).join('')}</div>${m.hreflang.length ? `<div class="meta-table-wrap"><h4>hreflang annotations</h4><table class="meta-table"><tbody>${m.hreflang.map(x => `<tr><th>${escapeHtml(x.hreflang)}</th><td>${escapeHtml(x.href)}</td></tr>`).join('')}</tbody></table></div>` : ''}${m.jsonLd.length ? `<div class="meta-table-wrap"><h4>JSON-LD structured data</h4>${m.jsonLd.map(x => `<pre class="meta-code">${escapeHtml(x)}</pre>`).join('')}</div>` : ''}</div>`;
-  }
+  async function fetchCheck(url){const c=new AbortController(),t=setTimeout(()=>c.abort(),7000);try{const r=await fetch(url,{mode:'cors',redirect:'follow',cache:'no-store',signal:c.signal});return{ok:r.ok,status:r.status}}catch(e){return{ok:null,status:'blocked'}}finally{clearTimeout(t)}}
+  async function checkLinks(m){const list=[...new Map(m.anchors.filter(a=>/^https?:/i.test(a.href)).map(a=>[a.href,a])).values()].slice(0,80),out=[];for(let i=0;i<list.length;i+=8){out.push(...await Promise.all(list.slice(i,i+8).map(async a=>({...a,result:await fetchCheck(a.href)}))))}return{results:out,broken:out.filter(x=>x.result.ok===false),unknown:out.filter(x=>x.result.ok===null)}}
+  async function checkFile(url,name){const target=new URL('/'+name,url).href;try{const r=await fetch(target,{mode:'cors',redirect:'follow',cache:'no-store'}),body=await r.text();return{ok:r.ok,status:r.status,url:r.url||target,text:body.slice(0,12000),lines:body?body.split(/\r?\n/).filter(Boolean).length:0}}catch{return{ok:null,status:'blocked',url:target}}}
+  const socialHost=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch{return'social'}};
 
-  function insert(html) {
-    const report = $('#report');
-    if (!report) return;
-    document.getElementById('metaSeoReport')?.remove();
-    report.insertAdjacentHTML('beforeend', html);
+  function render(m,e,links,files){
+    const headings=m.headings.map(h=>`<div class="meta-heading-row"><span>H${h.level}</span><strong>${esc(h.text||'(empty heading)')}</strong><em>${chars(h.text)} chars</em></div>`).join('');
+    const rows=[['Title',`${e.tl} characters — ${m.title||'Missing'}`],['Meta description',`${e.dl} characters — ${m.description||'Missing'}`],['Meta keywords',m.keywords?`${e.kl} characters — ${m.keywords}`:'Not present'],['Robots',m.robots],['Canonical',m.canonical],['Viewport',m.viewport],['Language',m.lang],['Charset',m.charset],['OG title',m.og.title],['OG description',m.og.description],['OG image',m.og.image],['Twitter card',m.twitter.card]];
+    const table=rows.map(([a,b])=>`<tr><th>${esc(a)}</th><td>${esc(b||'Missing')}</td></tr>`).join('');
+    const brokenRows=links.broken.map(x=>`<tr><th>${x.result.status}</th><td>${esc(x.href)}<br><small>${esc(x.text||'')}</small></td></tr>`).join('');
+    const socialRows=m.socials.map(x=>`<tr><th>${esc(socialHost(x.href))}</th><td><a href="${esc(x.href)}" target="_blank" rel="noopener noreferrer">${esc(x.href)}</a></td></tr>`).join('');
+    const rules=e.checks.map(x=>`<article class="meta-rule ${x.ok?'good':'bad'}"><div class="meta-rule-head"><span class="meta-status ${x.ok?'good':'bad'}">${x.ok?'Pass':'Fix'}</span><span>${esc(x.title)}</span></div><p><strong>Current:</strong> ${esc(x.current)}</p>${!x.ok?`<p><strong>How to fix:</strong> ${esc(x.fix)}</p>`:''}</article>`).join('');
+    const raw=m.metas.map(x=>`<tr><th>${esc(x.name||x.property||x.httpEquiv||(x.charset?'charset':'meta'))}</th><td>${esc(x.content||x.charset||'—')}</td></tr>`).join('');
+    const allLinks=m.links.filter(x=>x.rel||x.href).map(x=>`<tr><th>${esc(x.rel||'link')}</th><td>${esc(x.hreflang?x.hreflang+' — ':'')}${esc(x.href||'—')}</td></tr>`).join('');
+    const fileBox=(label,x)=>x?.ok===true?`<div class="meta-resource good"><strong>${label}: Found</strong><span>HTTP ${x.status} · ${x.lines||0} lines</span><pre class="meta-code">${esc(x.text||'')}</pre></div>`:x?.ok===false?`<div class="meta-resource bad"><strong>${label}: Not found</strong><span>HTTP ${x.status}</span></div>`:`<div class="meta-resource warn"><strong>${label}: Could not verify</strong><span>CORS/network restriction</span></div>`;
+    return `<div id="metaSeoReport" class="meta-seo-section report-section"><div class="section-title"><div><h3>Complete On-Page &amp; Meta SEO Analysis</h3><span>Extracted from target HTML</span></div><strong class="meta-score ${e.score>=90?'good':e.score>=70?'warn':'bad'}">${e.score}/100</strong></div><div class="meta-overview"><div><strong>${e.tl}</strong><span>Title characters <b class="meta-inline-status ${e.tl>=30&&e.tl<=60?'good':'bad'}">${e.tl>=30&&e.tl<=60?'OK':'Review'}</b></span></div><div><strong>${e.dl}</strong><span>Description characters <b class="meta-inline-status ${e.dl>=70&&e.dl<=160?'good':'bad'}">${e.dl>=70&&e.dl<=160?'OK':'Review'}</b></span></div><div><strong>${e.kl}</strong><span>Keywords characters</span></div><div><strong>${m.headings.length}</strong><span>H1–H6 headings</span></div></div><div class="meta-overview meta-overview-wide"><div><strong>${m.internal.length}</strong><span>Internal links</span></div><div><strong>${m.external.length}</strong><span>External links</span></div><div><strong>${links.broken.length}</strong><span>Broken links</span></div><div><strong>${links.unknown.length}</strong><span>Unverified/CORS links</span></div></div><div class="meta-table-wrap"><h4>Extracted SEO metadata</h4><table class="meta-table"><tbody>${table}</tbody></table></div><div class="meta-table-wrap"><h4>Page headings — ${m.headings.length} total</h4><div class="meta-heading-scroll">${headings||'<div class="meta-empty">No H1–H6 headings found.</div>'}</div></div><div class="meta-table-wrap"><h4>Social media links — ${m.socials.length}</h4><table class="meta-table"><tbody>${socialRows||'<tr><td>No recognized social profile links found.</td></tr>'}</tbody></table></div><div class="meta-resources"><h4>robots.txt &amp; sitemap.xml</h4>${fileBox('robots.txt',files.robots)}${fileBox('sitemap.xml',files.sitemap)}</div><div class="meta-table-wrap"><h4>Broken links</h4>${links.broken.length?`<table class="meta-table"><tbody>${brokenRows}</tbody></table>`:`<div class="meta-resource good"><strong>No confirmed broken links in the first ${links.results.length} checked links.</strong><span>${links.unknown.length?`${links.unknown.length} links could not be verified because of CORS/network restrictions.`:'All checked links returned a successful HTTP response.'}</span></div>`}</div><div class="meta-rules"><h4>SEO compliance &amp; fixes</h4>${rules}<div class="meta-rule warn"><div class="meta-rule-head"><span class="meta-status warn">Info</span><span>Meta keywords</span></div><p><strong>Current:</strong> ${esc(m.keywords?`${e.kl} characters`:'Not present')}</p><p>There is no Google-required character length for meta keywords. Google Search does not use this tag for ranking, so the analyzer reports it for completeness rather than as a ranking requirement.</p></div></div><div class="meta-table-wrap"><h4>All meta tags — ${m.metas.length}</h4><table class="meta-table"><tbody>${raw||'<tr><td>No meta tags found.</td></tr>'}</tbody></table></div><div class="meta-table-wrap"><h4>All link elements — ${m.links.length}</h4><table class="meta-table"><tbody>${allLinks||'<tr><td>No link elements found.</td></tr>'}</tbody></table></div>${m.hreflang.length?`<div class="meta-table-wrap"><h4>hreflang</h4><table class="meta-table"><tbody>${m.hreflang.map(x=>`<tr><th>${esc(x.hreflang)}</th><td>${esc(x.href)}</td></tr>`).join('')}</tbody></table></div>`:''}${m.jsonLd.length?`<div class="meta-table-wrap"><h4>JSON-LD structured data</h4>${m.jsonLd.map(x=>`<pre class="meta-code">${esc(x)}</pre>`).join('')}</div>`:''}</div>`;
   }
-
-  async function extract(url) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
-    try {
-      const response = await fetch(url, { mode:'cors', redirect:'follow', cache:'no-store', signal:controller.signal, headers:{Accept:'text/html,application/xhtml+xml'} });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const html = await response.text();
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      return collect(doc, url);
-    } finally { clearTimeout(timer); }
-  }
-
-  function loading() { insert('<div id="metaSeoReport" class="meta-seo-section report-section"><div class="section-title"><div><h3>Complete Meta SEO Analysis</h3><span>Extracting page head…</span></div></div><div class="metric"><strong>Reading metadata</strong><span>Collecting title, description, robots, canonical, Open Graph, Twitter, hreflang, favicon and structured data.</span></div></div>'); }
-  function failure(url) {
-    insert(`<div id="metaSeoReport" class="meta-seo-section report-section"><div class="section-title"><div><h3>Complete Meta SEO Analysis</h3><span>Browser extraction unavailable</span></div></div><div class="metric warn"><strong>Full HTML metadata could not be fetched from this website.</strong><span>The target server blocked browser cross-origin HTML access (CORS) or did not return HTML. PageSpeed/Lighthouse SEO checks above remain available. To guarantee complete metadata extraction for every site, the production version should use a same-origin server/Cloudflare Worker proxy.</span></div><div class="meta-rules"><h4>What is still checked by PageSpeed</h4><p class="report-note">Title, meta description, crawlability, canonical, hreflang, language, viewport and other SEO audits are evaluated by Lighthouse when the page can be analyzed.</p></div></div>`);
-  }
-
-  async function run() {
-    const input = $('#url');
-    const url = normalize(input?.value);
-    if (!url) return;
-    loading();
-    try {
-      const meta = await extract(url);
-      insert(renderMeta(meta, evaluate(meta), 'Extracted from the target HTML <head>'));
-    } catch (error) {
-      console.info('Meta SEO extraction:', error?.message || error);
-      failure(url);
-    }
-  }
-
-  document.addEventListener('click', event => {
-    if (event.target?.id === 'analyze') setTimeout(run, 350);
-  });
-  $('#url')?.addEventListener('keydown', event => { if (event.key === 'Enter') setTimeout(run, 350); });
+  function insert(html){const r=$('#report');if(!r)return;document.getElementById('metaSeoReport')?.remove();r.insertAdjacentHTML('beforeend',html)}
+  function loading(){insert('<div id="metaSeoReport" class="meta-seo-section report-section"><div class="section-title"><div><h3>Complete On-Page &amp; Meta SEO Analysis</h3><span>Scanning headings, metadata, links, social profiles, robots.txt and sitemap.xml…</span></div></div><div class="metric"><strong>Scanning page</strong><span>Please wait while available signals are extracted and verified.</span></div></div>')}
+  function failure(){insert('<div id="metaSeoReport" class="meta-seo-section report-section"><div class="section-title"><div><h3>Complete On-Page &amp; Meta SEO Analysis</h3><span>Browser extraction unavailable</span></div></div><div class="metric warn"><strong>The target HTML could not be fetched directly by the browser.</strong><span>This is usually caused by CORS. PageSpeed/Lighthouse can still analyze the URL. A same-origin backend/Cloudflare Worker proxy is required for guaranteed full extraction and link checking across arbitrary domains.</span></div></div>')}
+  async function run(){const url=norm($('#url')?.value);if(!url)return;loading();try{const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);let m;try{const r=await fetch(url,{mode:'cors',redirect:'follow',cache:'no-store',signal:c.signal,headers:{Accept:'text/html,application/xhtml+xml'}});if(!r.ok)throw Error(`HTTP ${r.status}`);m=collect(new DOMParser().parseFromString(await r.text(),'text/html'),url)}finally{clearTimeout(t)}const [links,robots,sitemap]=await Promise.all([checkLinks(m),checkFile(url,'robots.txt'),checkFile(url,'sitemap.xml')]);insert(render(m,evaluate(m),links,{robots,sitemap}))}catch(e){console.info('Meta SEO extraction:',e?.message||e);failure()}}
+  document.addEventListener('click',e=>{if(e.target?.id==='analyze')setTimeout(run,350)});$('#url')?.addEventListener('keydown',e=>{if(e.key==='Enter')setTimeout(run,350)});
 })();
