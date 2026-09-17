@@ -1,0 +1,10 @@
+{
+  "name": "Reviewer SEO Tools",
+  "short_name": "Reviewer SEO",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#25324b",
+  "description": "Free website SEO, PageSpeed, accessibility and best-practice analysis tools."
+}
