@@ -9,6 +9,7 @@
 <meta name="author" content="Imad Limrani">
 <meta name="theme-color" content="#25324b">
 <meta name="application-name" content="Reviewer SEO Tools">
+<link rel="manifest" href="site.webmanifest">
 <link rel="canonical" href="https://fastseo.site/">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Reviewer SEO Tools"><meta property="og:title" content="Reviewer SEO Tools — Free Website SEO Analyzer"><meta property="og:description" content="Analyze website SEO, performance, accessibility and best practices with Reviewer SEO Tools."><meta property="og:url" content="https://fastseo.site/">
 <meta name="twitter:card" content="summary"><meta name="twitter:title" content="Reviewer SEO Tools — Free Website SEO Analyzer"><meta name="twitter:description" content="Free practical website SEO and PageSpeed analysis with clear results.">
@@ -47,8 +48,11 @@
 <div class="footer-bottom"><p>© 2026 Reviewer SEO Tools · By Imad Limrani</p></div>
 </div></footer>
 <div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Cookie consent" hidden><div><strong>Cookies</strong><p>We use essential browser storage, such as your theme preference and cookie consent choice. Optional analytics or advertising cookies are not enabled by this application unless they are added later.</p></div><div class="cookie-actions"><button id="cookieAccept">Accept</button><button id="cookieReject" class="secondary">Reject optional</button></div></div>
-<script src="assets/app.js"></script>
-<script src="assets/report-enhanced.js"></script>
+<script src="assets/app.js" defer></script>
+<script src="assets/report-enhanced.js" defer></script>
 <script src="assets/meta-seo.js" defer></script>
 <script src="assets/meta-suggestions.js" defer></script>
+<script>
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+</script>
 </body></html>
