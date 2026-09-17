@@ -2,7 +2,7 @@ const $ = s => document.querySelector(s);
 
 // Google PageSpeed Insights configuration.
 // Add your API key manually here before using the analyzer on GitHub Pages.
-const PAGESPEED_API_KEY = 'YOUR_PAGESPEED_API_KEY';
+const PAGESPEED_API_KEY = 'AIzaSyBb_vtTMLnYeQyKzwrWM7eJQ-MQxnk1Mpw';
 const PAGESPEED_API_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
 
 const normalize = value => { value = value.trim(); if (!value) return null; if (!/^https?:\/\//i.test(value)) value = 'https://' + value; try { return new URL(value).href; } catch { return null; } };
