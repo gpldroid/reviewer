@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://gpldroid.github.io/reviewer/sitemap.xml
+Sitemap: https://fastseo.site/sitemap.xml
