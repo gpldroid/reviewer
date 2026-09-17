@@ -1,6 +1,8 @@
 const $ = s => document.querySelector(s);
 
-// Add your Google PageSpeed Insights API key manually here.
+// Google PageSpeed Insights API configuration.
+// NOTE: this static version keeps the existing key for compatibility.
+// For production, move PageSpeed requests behind a server/Cloudflare Worker secret.
 const PAGESPEED_API_KEY = 'AIzaSyBb_vtTMLnYeQyKzwrWM7eJQ-MQxnk1Mpw';
 const PAGESPEED_API_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
 
@@ -17,17 +19,22 @@ function renderLighthouse(url, data, strategy = 'mobile') {
 }
 
 async function analyze(url, strategy = 'mobile') {
-  if (!PAGESPEED_API_KEY || PAGESPEED_API_KEY === 'AIzaSyBb_vtTMLnYeQyKzwrWM7eJQ-MQxnk1Mpw') throw new Error('PageSpeed API key is not configured. Open assets/app.js and add your own key.');
+  if (!PAGESPEED_API_KEY) throw new Error('PageSpeed analysis is temporarily unavailable. Please try again later.');
   const params = new URLSearchParams({ url, strategy, key: PAGESPEED_API_KEY, locale: 'en-US' });
   ['performance', 'seo', 'accessibility', 'best-practices'].forEach(category => params.append('category', category));
   let response;
-  try { response = await fetch(`${PAGESPEED_API_URL}?${params.toString()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' }); } catch { throw new Error('The Google PageSpeed Insights API could not be reached. Check your internet connection and API key restrictions.'); }
+  try { response = await fetch(`${PAGESPEED_API_URL}?${params.toString()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' }); } catch { throw new Error('The PageSpeed service could not be reached. Please check your connection and try again.'); }
   let data = null; try { data = await response.json(); } catch {}
-  if (!response.ok) { if (response.status === 429) throw new Error('PageSpeed quota/rate limit reached. Please wait and try again.'); if (response.status === 400) throw new Error(data?.error?.message || data?.error || 'Invalid PageSpeed request or URL.'); if (response.status === 401 || response.status === 403) throw new Error(data?.error?.message || data?.error || 'PageSpeed API key is invalid, restricted, or not authorized.'); throw new Error(data?.error?.message || data?.error || `PageSpeed analysis failed (${response.status}).`); }
+  if (!response.ok) {
+    if (response.status === 429) throw new Error('PageSpeed quota/rate limit reached. Please wait and try again.');
+    if (response.status === 400) throw new Error(data?.error?.message || data?.error || 'The website URL could not be analyzed. Please check the URL and try again.');
+    if (response.status === 401 || response.status === 403) throw new Error('PageSpeed authorization failed. The analysis service is temporarily unavailable.');
+    throw new Error(data?.error?.message || data?.error || 'PageSpeed analysis failed. Please try again.');
+  }
   return data;
 }
 
-$('#analyze')?.addEventListener('click', async () => { const url = normalize($('#url').value); if (!url) { $('#notice').textContent = 'Please enter a valid URL.'; return; } $('#status').textContent = 'Analyzing'; $('#notice').textContent = 'Analyzing with Google PageSpeed Insights…'; try { const data = await analyze(url, 'mobile'); renderLighthouse(url, data, 'mobile'); $('#notice').textContent = 'Analysis completed successfully.'; } catch (error) { $('#status').textContent = 'Error'; $('#empty').hidden = true; $('#report').hidden = false; $('#report').innerHTML = `<div class="metric warn"><strong>Analysis unavailable</strong><span>${error.message}</span></div>`; $('#notice').textContent = 'Check the PageSpeed API key configuration in assets/app.js.'; } });
+$('#analyze')?.addEventListener('click', async () => { const url = normalize($('#url').value); if (!url) { $('#notice').textContent = 'Please enter a valid URL.'; return; } $('#status').textContent = 'Analyzing'; $('#notice').textContent = 'Analyzing with Google PageSpeed Insights…'; try { const data = await analyze(url, 'mobile'); renderLighthouse(url, data, 'mobile'); $('#notice').textContent = 'Analysis completed successfully.'; } catch (error) { $('#status').textContent = 'Error'; $('#empty').hidden = true; $('#report').hidden = false; $('#report').innerHTML = `<div class="metric warn"><strong>Analysis unavailable</strong><span>${error.message}</span></div>`; $('#notice').textContent = 'The analysis service could not complete the request. Please try again.'; } });
 $('#compareBtn')?.addEventListener('click', async () => { const a = normalize($('#url1').value), b = normalize($('#url2').value); if (!a || !b) { $('#compareResult').innerHTML = '<div class="metric warn">Enter two valid URLs.</div>'; return; } $('#compareResult').innerHTML = '<div class="metric">Comparing both websites…</div>'; try { const [left, right] = await Promise.all([analyze(a, 'mobile'), analyze(b, 'mobile')]); const l = left.lighthouseResult || left, r = right.lighthouseResult || right; $('#compareResult').innerHTML = `<div class="metric pass"><strong>PageSpeed comparison</strong><span>${a} — Performance ${score(l,'performance') ?? '—'}, SEO ${score(l,'seo') ?? '—'} · ${b} — Performance ${score(r,'performance') ?? '—'}, SEO ${score(r,'seo') ?? '—'}</span></div>`; } catch (error) { $('#compareResult').innerHTML = `<div class="metric warn"><strong>Comparison unavailable</strong><span>${error.message}</span></div>`; } });
 
 const menuToggle = $('#menuToggle'); const mainNav = $('#mainNav'); const dropdowns = document.querySelectorAll('.nav-dropdown');
