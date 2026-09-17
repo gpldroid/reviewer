@@ -1,6 +1,0 @@
-name = "reviewer"
-compatibility_date = "2026-09-16"
-pages_build_output_dir = "."
-
-# Cloudflare Pages project (not a Workers script).
-# CLI deployment: wrangler pages deploy . --project-name reviewer
