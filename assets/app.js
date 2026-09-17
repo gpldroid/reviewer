@@ -1,7 +1,7 @@
 const $ = s => document.querySelector(s);
 
 // Add your Google PageSpeed Insights API key manually here.
-const PAGESPEED_API_KEY = 'YOUR_PAGESPEED_API_KEY';
+const PAGESPEED_API_KEY = 'AIzaSyBb_vtTMLnYeQyKzwrWM7eJQ-MQxnk1Mpw';
 const PAGESPEED_API_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
 
 const normalize = value => { value = value.trim(); if (!value) return null; if (!/^https?:\/\//i.test(value)) value = 'https://' + value; try { return new URL(value).href; } catch { return null; } };
@@ -17,7 +17,7 @@ function renderLighthouse(url, data, strategy = 'mobile') {
 }
 
 async function analyze(url, strategy = 'mobile') {
-  if (!PAGESPEED_API_KEY || PAGESPEED_API_KEY === 'YOUR_PAGESPEED_API_KEY') throw new Error('PageSpeed API key is not configured. Open assets/app.js and add your own key.');
+  if (!PAGESPEED_API_KEY || PAGESPEED_API_KEY === 'AIzaSyBb_vtTMLnYeQyKzwrWM7eJQ-MQxnk1Mpw') throw new Error('PageSpeed API key is not configured. Open assets/app.js and add your own key.');
   const params = new URLSearchParams({ url, strategy, key: PAGESPEED_API_KEY, locale: 'en-US' });
   ['performance', 'seo', 'accessibility', 'best-practices'].forEach(category => params.append('category', category));
   let response;
